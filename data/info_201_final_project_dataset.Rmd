@@ -1,0 +1,78 @@
+---
+title: "info 201 final project data sets"
+output: html_document
+date: "2024-02-25"
+---
+
+```{r}
+library(tidyverse)
+countryInfo <- read_delim("Desktop/world-data-2023.csv")
+
+countryInfoSelect <- countryInfo %>% 
+  select(Country, `Density
+(P/Km2)`, `Agricultural Land( %)`, `Land Area(Km2)`, `Birth Rate`, `Co2-Emissions`, `Fertility Rate`, `Forested Area (%)`, `Infant mortality`, Population, Urban_population)
+#head(countryInfoSelect, 5)
+```
+```{r}
+electricity <- read_delim("Desktop/Global Electricity Statistics.csv")
+
+electricity$Country <- trimws(electricity$Country)
+options(scipen = 999)
+
+electricitySelect <- electricity %>% 
+  filter(Features == "net consumption") %>% 
+  rename("electricityConsumption" = "2021") 
+
+electricitySelect$electricityConsumption <- as.numeric(electricitySelect$electricityConsumption)
+electricitySelect <- electricitySelect %>% 
+  select(Country, electricityConsumption)
+
+#head(electricitySelect, 5)
+```
+
+
+```{r}
+airQuality <- read_delim("Desktop/AQI and Lat Long of Countries.csv")
+
+airQualitySelect <- airQuality %>% 
+  group_by(Country) %>% 
+  summarize(avgAirQuality = mean(`AQI Value`, na.rm = TRUE))
+#head(airQualitySelect, 5)
+```
+
+```{r}
+merged_data <- merge(x = countryInfoSelect, y = airQualitySelect, by = "Country", all = TRUE)
+merged_data <- merge(x = merged_data, y = electricitySelect, by = "Country", all = TRUE)
+
+#head(merged_data, 5)
+```
+
+```{r}
+merged_data$ratio <- merged_data$electricityConsumption / merged_data$avgAirQuality
+#head(merged_data, 5)
+```
+
+
+```{r}
+classify_aqi <- function(avgAQI) {
+  if (is.na(avgAQI)) {
+    return(NA)
+  }
+  else if (avgAQI <= 50) {
+    return("Good")
+  } else if (avgAQI >= 51 && avgAQI <= 100) {
+    return("Moderate")
+  } else if (avgAQI >= 101 && avgAQI <= 150) {
+    return("Unhealthy for Sensitive Groups")
+  } else if (avgAQI >= 151 && avgAQI <= 200) {
+    return("Unhealthy")
+  } else if (avgAQI >= 201 && avgAQI <= 300) {
+    return("Very Unhealthy")
+  } else {
+    return("Hazardous")
+  }
+}
+
+merged_data$levelOfConcern <- sapply(merged_data$avgAirQuality, classify_aqi)
+head(merged_data, 5)
+```

@@ -1,0 +1,278 @@
+---
+title: "Final_Prohect_Report_NoCode"
+author: "Camilo Montes De Haro, Alexander Huynh, Asmit Sinha, Jessica Xiong"
+date: "2024-03-06"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## 1. Abstract
+We conducted a data analysis project focusing on greenhouse gas emissions and their correlations with various factors like electricity use, urban population, and forest area. Our findings indicate positive correlations between CO2 emissions and electricity consumption, as well as urban population, while negative correlations were observed with fertility rates and forested area. However, it's important to note that our analysis shows correlation but not causation. Future work should explore additional variables and regional data to deepen our understanding of the factors influencing CO2 emissions.
+
+## 2. Introduction
+Our work aims to provide policymakers with evidence-based insights that can guide the development of effective climate policies and strategies. With the rapid increase in global CO2 emissions and the significant harm it is causing our world and environment, we want to examine the trends of relating factors that may be playing a role in our deteriorating climate. By understanding the factors correlated with increasing CO2 emissions, legislators can make informed decisions to address the pressing issue of climate change and work towards a more sustainable future.
+
+We are conducting a data analysis project focused on CO2 emissions to draw correlations between various contributing or related factors and inform legislators and policymakers about the implications of these emissions. Our target group comprises legislators and politicians who have the authority to enact policies and allocate resources to combat climate change effectively.
+
+The project aims to explore the correlation between greenhouse gas emissions and factors such as deforestation, electricity use, and urbanization. By analyzing datasets containing relevant variables for different countries, we seek to identify patterns and relationships that can inform policy making decisions.
+
+### Questions
+* Does the amount of forested area in different countries affect the air quality of those countries? 
+* Is there a relationship between a country’s electricity consumption and air quality?
+* Is there a correlation between population and/or urban population with CO2 emissions?
+* Is there a correlation between fertility rates and CO2 emissions?
+
+
+## 3. Data
+### **Dataset Merging Work:**
+```{r message=FALSE, warning=FALSE}
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+library(stats)
+```
+
+```{r message = FALSE, warning = FALSE}
+countryInfo <- read_delim("data/world-data-2023.csv")
+
+countryInfoSelect <- countryInfo %>% 
+  select(Country, `Density
+(P/Km2)`, `Agricultural Land( %)`, `Land Area(Km2)`, `Birth Rate`, `Fertility Rate`, `Forested Area (%)`, `Infant mortality`, Population, Urban_population)
+```
+
+```{r message = FALSE, warning = FALSE}
+electricity <- read_delim("data/Global Electricity Statistics.csv")
+
+electricity$Country <- trimws(electricity$Country)
+options(scipen = 999)
+
+electricitySelect <- electricity %>% 
+  filter(Features == "net consumption") %>% 
+  rename("electricityConsumption" = "2021") 
+
+electricitySelect$electricityConsumption <- as.numeric(electricitySelect$electricityConsumption)
+electricitySelect <- electricitySelect %>% 
+  select(Country, electricityConsumption)
+```
+
+```{r message = FALSE, warning = FALSE}
+airQuality <- read_delim("data/AQI and Lat Long of Countries.csv")
+
+airQualitySelect <- airQuality %>% 
+  group_by(Country) %>% 
+  summarize(avgAirQuality = mean(`AQI Value`, na.rm = TRUE))
+```
+
+```{r message = FALSE, warning = FALSE}
+mtCo2 <- read_delim("data/GCB2023v43_MtCO2_flat.csv")
+mtCo2Select <- mtCo2 %>% 
+  group_by(Country) %>% 
+  filter(Year == "2022") %>% 
+  rename("MtCO2_Emissions" = "Total") %>% 
+  select(Country, MtCO2_Emissions)
+```
+
+```{r message = FALSE, warning = FALSE}
+merged_data <- merge(x = countryInfoSelect, y = airQualitySelect, by = "Country", all = TRUE)
+merged_data <- merge(x = merged_data, y = mtCo2Select, by = "Country", all = TRUE)
+merged_data <- merge(x = merged_data, y = electricitySelect, by = "Country", all = TRUE)
+
+merged_data %>% 
+  select(-`Land Area(Km2)`, -`Birth Rate`, - `Density
+(P/Km2)`, -`Infant mortality`) %>% 
+  head(5)
+```
+
+
+### Why these datasets:
+We use these datasets because they include global data to get a general picture of CO2 emissions’ connections with our variables of interest. Additionally, we chose these datasets because they provide important information about greenhouse gas emissions and things that might be linked to them. By studying these datasets, we want to find connections between greenhouse gasses and different factors like forests, electricity use, population size, and air quality. These connections can help us find ways to reduce greenhouse gas emissions and climate change.
+
+
+### Dataset origins: 
+These datasets come from Kaggle.com, a website where people share all kinds of datasets. In addition, one of the datasets comes from Zenodo, another similar website. These datasets are put together by different authors who collected information from sources like the World Bank, Global Carbon Project, and other reliable organizations. 
+
+### Who collected the data: 
+The people who created the datasets on Kaggle gathered the information from other sources. They got the data from places like the World Bank and made it available for others to use.
+
+### Links to data:
+* [World Air Quality Index by City and Coordinates](https://www.kaggle.com/datasets/adityaramachandran27/world-air-quality-index-by-city-and-coordinates)
+* [Countries of the World 2023](https://www.kaggle.com/datasets/nelgiriyewithana/countries-of-the-world-2023)
+* [Global Electricity Statistics](https://www.kaggle.com/datasets/akhiljethwa/global-electricity-statistics)
+* [CO2 Emissions by Country](https://zenodo.org/records/10562476)
+
+### Dataset use-policy:
+These datasets are generally free to use for educational and research purposes. Based on their licensing of Creative Commons Attribution 4.0 International, there are no restrictions on who can access the data or what purpose it is used for, as long as the creator is cited. 
+
+### Dataset descriptions:
+* **World Air Quality Index by City and Coordinates:** This dataset gives air quality information for cities worldwide. The cities are the population, and the sample is the air quality data for each city.
+* **Countries of the World 2023:** This dataset has facts about countries like population and size. Each country is the population, and the sample is the information about each country. This dataset also includes data for fertility rates and the forested area in each country.
+* **Global Electricity Statistics:** This dataset has details about electricity use around the world. Each country or region is the population, and the sample is the electricity data for each place.
+* **CO2 Emissions by Country:** This dataset gives CO2 emission information for countries worldwide. The countries are the population, and the sample is the CO2 emissions for each country.
+
+### Data quality issues:
+The data quality issues we encountered mostly surrounded the prevalence of NA values throughout our dataset. For a number of countries, one dataset would contain information for a country but another one or two would not. 
+
+### Final merged dataset:
+* Our final merged dataset has 270 rows and 15 columns. 
+* The rows each represent a country in our dataset. 
+* Relevant Variables:
+  * The relevant variables in our dataset are the country name, Land area, birth rate, CO2 emissions, forested area %, population, urban population, average air quality, electricity consumption, ratio of electricity over air quality, and level of concern (regarding air quality). These values came from three different datasets that were then merged together using the country name as the merging key. The ratio of electricity over air quality was coded by dividing the electricity consumption of a country by the average air quality AQI. The level of concern was categorized based on the country’s average AQI across various cities according to categories and guidelines set by the US EPA. 
+* Missing Values:
+  * There are a total of 1159 NA values throughout the entire dataset out of 4050 total values. Of some of the most relevant variables: 82 countries are missing forested area information, 95 are missing average air quality information, and 51 are missing electricity consumption data. The most prevalent quality issue with our relevant variables was the number of NA missing values. 
+
+## 4. Methods
+### Variables included and why:
+Considering we were primarily interested in CO2 Emissions, we used a variable that represented the total CO2 emitted in 2022, as well as variables we thought may have been influenced by it and ones that also may have influenced it.  These include Urban Population (%), Net Electricity Consumption (BkWh), and Fertility rate (children per woman). We were also interested in comparing Forested Area (%) and Average Air Quality (AQI).
+
+### Data processing:
+Our data processing first included manipulating the datasets for values we wanted to look at more. After we had our new dataset of attributes, we then chose two variables to graph. We felt this was the easiest way to find correlations between them and to visualize those connections. We added trend lines to better understand the two variables and found the correlation coefficient for each pairing. 
+
+### Selecting samples: 
+Our sample was limited by the data we had for different countries. Every pairing of variables relied on the notion that every country in our sample had values for BOTH variables. This meant that our sample size changed depending on which variables we were comparing. For example, when comparing CO2 emissions and Fertility Rate,  Congo has a value for CO2 emissions but not for fertility rate, so, therefore, it was excluded from the sample. This was done automatically by excluding any country from our sample and analysis with missing (NA) values for any of the two attributes we were comparing. This sometimes resulted in less-than-ideal sample sizes but allowed us to have accurate figures. It's also important to note that we included all outliers to increase the sample size.
+
+### Technical decisions:
+We never replaced any values; instead, we excluded them from our analysis. On one particular occasion, we had to convert percentage values that were stored as characters into doubles. We also regularly divided our values by population to find their per capita representation. This also meant that if a country had values for the two attributes we were comparing but not one for population, then it would have to be excluded from the analysis. 
+
+### Other statsitical methods:
+We used the cor() function to find the correlation coefficient between two attributes. 
+
+## 5. Results 
+```{r message=FALSE, warning=FALSE}
+countryData <- read_delim("data/merged_data.csv")
+countryData$MtCO2_percapita <-(countryData$MtCO2_Emissions * 1000000) / countryData$Population
+```
+
+
+### Forested Area v. Average Air Quality
+```{r message=FALSE, warning=FALSE}
+countryData %>%
+   mutate(ForestedAreaDec = ifelse(is.na(`Forested Area (%)`), NA, as.numeric(sub("%", "", `Forested Area (%)`)))) %>%
+   ggplot(aes(x = ForestedAreaDec , y = avgAirQuality,
+          col = cut(avgAirQuality, breaks = c(0, 50, 100, 150, 200, 300, Inf), include.lowest = FALSE),
+          alpha = 0.8,
+          size = Population)) + 
+    geom_point() +
+    scale_color_manual(values = c("#8cc33e",
+                                  "#fec922",
+                                  "#fd7503",
+                                  "#ff0305",
+                                  "#a8004c",
+                                  "#7c021d"),
+                       labels = c("Good",
+                                  "Moderate",
+                                  "Unhealthy for \nSensitive Groups",
+                                  "Unhealthy",
+                                  "Very Unhealthy",
+                                  "Hazardous")) +
+    scale_size_continuous(breaks = c(30000000, 100000000, 300000000, 500000000, 1000000000),
+                          labels = c("30M", "100M", "300M", "500M", "1B"),
+                          range = c(2, 6)) +
+    geom_smooth(method = "lm", se = FALSE, aes(group = 1), col = "grey12", linetype = 4) +
+    labs(x = "Forested Area (%)", y = "Average Air Quality (aqi)", title = "Forested Area vs Air Quality \nfor Different Countries", col = "Air Quality Index", size = "Population") +
+    guides(alpha=FALSE, size = guide_legend(override.aes = list(linetype = 0)),
+           color = guide_legend(override.aes = list(color = c("#8cc33e",
+                                                              "#fec922",
+                                                              "#fd7503",
+                                                              "#ff0305",
+                                                              "#a8004c",
+                                                              "#7c021d")))) +
+    theme_minimal() 
+
+```
+
+```{r message = FALSE, warning = FALSE}
+countryDataTemp <- countryData %>% 
+  mutate(ForestedAreaDec = ifelse(is.na(`Forested Area (%)`), NA, as.numeric(sub("%", "", `Forested Area (%)`))))
+
+cor1 <- cor(countryDataTemp$ForestedAreaDec, countryData$avgAirQuality, use = "complete.obs")
+cat("The correlation between these two variables is ", cor1, ".", " That is a moderate negative linear relationship.", sep = "")
+```
+
+### Electrcicity Consumption v. CO2 Emissions
+```{r message=FALSE, warning=FALSE}
+maxEC <- max(countryData$electricityConsumption, na.rm = TRUE) 
+minEC <- min(countryData$electricityConsumption, na.rm = TRUE)
+countryData %>% 
+  ggplot(aes(x = (electricityConsumption / Population) * 1000000, y = MtCO2_percapita,
+             alpha = 0.8,)) +
+  geom_point() +
+  geom_smooth(method = "lm", se=FALSE, col="red", linetype = 4) +
+  scale_x_log10() +
+  scale_y_log10() +
+  labs(x = "Net Electricity Consumption per capita (BkWh/person)", y = "CO2 Emissions per capita (tCO2/person)",
+       title = "Electricity Consumption per capita vs CO2 Emissions per capita \nfor Different Countries") +
+  guides(alpha=FALSE) +
+  theme_minimal()
+```
+
+```{r message = FALSE, warning = FALSE}
+cor2 <- cor(countryData$electricityConsumption / countryData$Population, countryData$MtCO2_percapita, use = "complete.obs")
+cat("The correlation between these two variables is ", cor2, ".", " That is a relatively strong positive linear relationship.", sep = "")
+```
+
+
+### Urban Population v. CO2 Emissions
+
+```{r message=FALSE, warning=FALSE}
+countryData %>%
+  mutate(popRatio = Urban_population/Population) %>% 
+  ggplot(aes(x = popRatio * 100, y = MtCO2_percapita,
+             alpha = 0.8)) +
+  geom_point(size = 2) +
+  geom_smooth(method = "lm", se=FALSE, col="red", linetype = 4) +
+  scale_x_log10() +
+  scale_y_log10() +
+  labs(x = "Urban Population (%)", y = "CO2 Emissions per capita (tCO2/person)",
+       title = "Urban Population vs CO2 Emissions per capita \nfor Different Countries") +
+  guides(alpha=FALSE) +
+  theme_minimal()
+```
+
+```{r message = FALSE, warning = FALSE}
+cor3 <- cor(countryData$Urban_population / countryData$Population , countryData$MtCO2_percapita, use = "complete.obs")
+cat("The correlation between these two variables is ", cor3, ".", " That is a moderate positive linear relationship.", sep = "")
+```
+
+
+### CO2 Emissions vs Fertility Rate
+
+```{r message=FALSE, warning=FALSE}
+countryData %>% 
+  ggplot(aes(x = MtCO2_percapita , y = `Fertility Rate`,
+             alpha = 0.8)) +
+  geom_point(size = 2) + 
+  geom_smooth(method = "lm", se = FALSE, col = "red", linetype = 4) +
+  scale_y_log10() +
+  scale_x_log10() +
+  labs(x = "CO2 Emissions per capita (MtCO2/person)", y = "Fertility Rate (children per woman)",
+       title = "CO2 Emissions per capita vs Fertitility Rate \nfor Different Countries") +
+  guides(alpha=FALSE) +
+  theme_minimal() 
+```
+
+```{r message = FALSE, warning = FALSE}
+cor4 <- cor(countryData$MtCO2_percapita , countryData$`Fertility Rate`, use = "complete.obs")
+cat("The correlation between these two variables is ", cor4, ".", " That is a moderate negative linear relationship.", sep = "")
+```
+
+## 6. Discussions 
+### Results vs Questions:
+The results show that electricity consumption and urban population positively correlate with CO2 emissions. In addition, fertility rates and forest area negatively correlate with CO2 emissions. In other words, the findings show that using more electricity in cities and having more people living in urban areas tend to lead to higher CO2 emissions. On the other hand, places with higher birth rates and more forest areas tend to have lower CO2 emissions.
+
+### Limitations:
+* Currently, the data connecting each variable to CO2 emissions shows correlation but not causation.
+* There could be other important factors that we didn't include, which might influence the results differently.
+  * Industrial processes
+  * Transportation
+  * Policy
+* Using our existing variables in conjunction with more specific variables would help reinforce our claims. Ex: Find out which activities in urban populations contribute to CO2 emissions and which ones do not.
+
+### Future work: 
+To extend our understanding, we may require access to more datasets covering a wider range of variables and regions. More specific regional data could help identify geographical patterns of CO2 emissions to target those areas.
+
+## 7. Summary 
+
+Our analysis demonstrates the complex relationship between greenhouse gas emissions and various socio-economic and environmental factors. Legislators should consider these correlations when creating climate policies and strategies. While our findings provide valuable insights, further research is needed to understand the reasons behind these correlations and identify targeted solutions to combat CO2 emissions effectively.
